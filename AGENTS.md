@@ -25,3 +25,11 @@ Abrir PR(s) con descripción, pruebas ejecutadas, capturas si corresponde y paso
 
 ## Definición de terminado
 El usuario puede abrir la PWA desde iPhone, ver tres bloques editables, empezar una sesión, registrar resultados parciales, terminar y consultarla después.
+
+
+## Ampliaciones ordenadas
+- Biblioteca de ejercicios + constructor visual de rutinas editables; mantener separación entre plan y ejecución.
+- Fotos/animaciones propias o con licencia, nunca extraídas del mockup como activos reales.
+- Importación de pizarras por foto con revisión manual en fase posterior.
+- Apple Watch: NO prometer conexión desde PWA. Estudiar app compañera iOS con HealthKit y, para datos en vivo, watchOS nativa; consentimiento y privacidad.
+- Estas ampliaciones no deben bloquear el primer MVP usable.
