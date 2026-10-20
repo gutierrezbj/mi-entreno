@@ -51,3 +51,21 @@ Los últimos complementarios son una transcripción incierta de la imagen y debe
 - Datos iniciales presentes, ambigüedades etiquetadas y editables.
 - Tests para cálculo de progreso, sesiones parciales, pausa/reanudación, importación y sincronización sin duplicados.
 - README con .env.example, backup/restauración, despliegue VPS y acceso PWA.
+
+
+## Diseño ampliado: biblioteca y constructor (fase siguiente al flujo básico)
+- Entidades independientes: catálogo de ejercicios, plantillas de rutina y sesiones ejecutadas.
+- Crear ejercicios propios con nombre, categoría, instrucciones, unidad de medida, fotos/ilustraciones opcionales y variantes.
+- Constructor visual: crear bloques, reordenar ejercicios (incluido drag & drop accesible), rondas, repeticiones, metros, tiempo, peso y descansos; duplicar rutina y versionarla.
+- Reemplazar ejercicios durante una sesión cuando un equipo esté ocupado, conservando el plan original y el ejercicio efectivo.
+- Galería visual: imágenes con derechos claros (licencias o generación propia). Nunca tratar fotografías de mockups como assets licenciados ni estadísticas de muestra como reales.
+- Importar rutina desde fotografía de pizarra con IA en fase posterior: extracción propuesta, unidades y orden; revisión y confirmación humana obligatoria antes de guardar, marcar dudas.
+- El editor debe funcionar sin IA ni imágenes; la rutina inicial debe poder reproducirse de principio a fin.
+
+## Apple Watch y Apple Health — fase de investigación e integración
+- Una PWA web no tiene acceso directo a HealthKit ni a los sensores/entrenamientos del Apple Watch.
+- Estudiar companion app nativa iOS (Swift/SwiftUI + HealthKit) y, si resulta necesario para datos en vivo, watchOS con WorkoutKit/HealthKit y sesiones HKWorkoutSession.
+- Primer objetivo: importar con autorización explícita los entrenamientos, duración y frecuencia cardíaca disponible desde Apple Health, respetando orígenes y duplicados; valorar energía activa con advertencias de estimación.
+- Si se requiere lectura en tiempo real, diseñar después app watchOS y sincronización con backend; requerirá permisos, firma/desarrollo Apple y pruebas en hardware real.
+- Opcionalidad estricta: app plenamente usable sin reloj ni datos de Salud; permisos mínimos, revocación, privacidad, cifrado y eliminación de registros importados.
+- No afirmar compatibilidad o sincronización hasta haberla probado en iPhone/Watch reales.
