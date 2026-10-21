@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+const origin = process.env.APP_ORIGIN ?? "http://localhost:3000";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -6,7 +7,7 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: origin,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -18,8 +19,8 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run start",
-    url: "http://localhost:3000/login",
-    reuseExistingServer: !process.env.CI,
+    url: origin + "/login",
+    reuseExistingServer: false,
     timeout: 120000,
   },
 });

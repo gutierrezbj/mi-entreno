@@ -6,7 +6,16 @@ import {
   type WorkoutTemplate,
   type PrescribedExercise,
 } from "@/lib/model";
-const blankExercise = (): PrescribedExercise => ({
+import {
+  exerciseGroups,
+  withStructure,
+  equipmentLabels,
+  type Equipment,
+} from "@/lib/structure";
+import EquipmentTag from "./equipment-tag";
+const blankExercise = (
+  supersetId: string | null = null,
+): PrescribedExercise => ({
   id: crypto.randomUUID(),
   exerciseId: crypto.randomUUID(),
   name: "Nuevo ejercicio",
@@ -15,6 +24,8 @@ const blankExercise = (): PrescribedExercise => ({
   loadKg: null,
   restSeconds: 0,
   uncertain: false,
+  equipment: "unspecified",
+  supersetId,
 });
 function move<T>(list: T[], from: number, to: number) {
   const next = [...list];
@@ -32,7 +43,9 @@ export default function Editor({
   onSave: (t: WorkoutTemplate, isNew: boolean) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [value, setValue] = useState(() => structuredClone(initial));
+  const [value, setValue] = useState(() =>
+    withStructure(structuredClone(initial)),
+  );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   function block(
@@ -53,6 +66,23 @@ export default function Editor({
       exercises: value.blocks[bi].exercises.map((e, i) =>
         i === ei ? { ...e, ...change } : e,
       ),
+    });
+  }
+  function regroup(bi: number, exerciseId: string, supersetId: string | null) {
+    const exercises = value.blocks[bi].exercises.map((ex) =>
+      ex.id === exerciseId ? { ...ex, supersetId } : ex,
+    );
+    block(bi, {
+      exercises: exerciseGroups(exercises).flatMap((g) => g.exercises),
+    });
+  }
+  function moveGroup(bi: number, from: number, to: number) {
+    block(bi, {
+      exercises: move(
+        exerciseGroups(value.blocks[bi].exercises),
+        from,
+        to,
+      ).flatMap((g) => g.exercises),
     });
   }
   return (
@@ -172,129 +202,242 @@ export default function Editor({
               />
             </label>
           </div>
-          {b.exercises.map((ex, ei) => (
-            <div className="editor-exercise" key={ex.id}>
-              <label>
-                Ejercicio {ei + 1}
-                <input
-                  aria-label={`Nombre ejercicio ${bi + 1}.${ei + 1}`}
-                  required
-                  maxLength={120}
-                  value={ex.name}
-                  onChange={(e) =>
-                    exercise(bi, ei, {
-                      name: e.target.value,
-                      exerciseId: crypto.randomUUID(),
-                    })
-                  }
-                />
-              </label>
-              <div className="metrics">
-                <label>
-                  Objetivo
-                  <input
-                    aria-label={`Objetivo ${bi + 1}.${ei + 1}`}
-                    type="number"
-                    step="any"
-                    min="0"
-                    max="1000000"
-                    required
-                    value={ex.target}
-                    onChange={(e) =>
-                      exercise(bi, ei, { target: Number(e.target.value) })
-                    }
-                  />
-                </label>
-                <label>
-                  Unidad
-                  <select
-                    value={ex.unit}
-                    onChange={(e) =>
-                      exercise(bi, ei, {
-                        unit: e.target.value as PrescribedExercise["unit"],
-                      })
-                    }
+          <p className="muted small">
+            Agrupa los ejercicios que van juntos y distingue el material de cada
+            uno.
+          </p>
+          {exerciseGroups(b.exercises).map((group, gi, groups) => (
+            <section className="editor-superset" key={group.id}>
+              <div className="superset-heading">
+                <span className="superset-index">
+                  {String(gi + 1).padStart(2, "0")}
+                </span>
+                <h3>
+                  {group.paired ? `Superset ${gi + 1}` : "Ejercicio individual"}
+                </h3>
+                <div className="actions">
+                  <button
+                    type="button"
+                    aria-label={`Subir grupo ${bi + 1}.${gi + 1}`}
+                    disabled={gi === 0}
+                    onClick={() => moveGroup(bi, gi, gi - 1)}
                   >
-                    {units.map((u) => (
-                      <option key={u}>{u}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Carga (kg)
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    max="1000000"
-                    value={ex.loadKg ?? ""}
-                    placeholder="Sin definir"
-                    onChange={(e) =>
-                      exercise(bi, ei, {
-                        loadKg:
-                          e.target.value === "" ? null : Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Descanso (s)
-                  <input
-                    type="number"
-                    min="0"
-                    max="1000000"
-                    value={ex.restSeconds}
-                    onChange={(e) =>
-                      exercise(bi, ei, { restSeconds: Number(e.target.value) })
-                    }
-                  />
-                </label>
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Bajar grupo ${bi + 1}.${gi + 1}`}
+                    disabled={gi === groups.length - 1}
+                    onClick={() => moveGroup(bi, gi, gi + 1)}
+                  >
+                    ↓
+                  </button>
+                </div>
               </div>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={ex.uncertain}
-                  onChange={(e) =>
-                    exercise(bi, ei, { uncertain: e.target.checked })
-                  }
-                />{" "}
-                Transcripción por confirmar
-              </label>
-              <div className="actions">
+              {group.exercises.map((ex, withinGroup) => {
+                const ei = b.exercises.findIndex((e) => e.id === ex.id);
+                return (
+                  <div className="editor-exercise" key={ex.id}>
+                    <EquipmentTag kind={ex.equipment} />
+                    <div className="metrics">
+                      <label>
+                        Tipo de ejercicio
+                        <select
+                          aria-label={`Tipo ${bi + 1}.${ei + 1}`}
+                          value={ex.equipment ?? "unspecified"}
+                          onChange={(e) =>
+                            exercise(bi, ei, {
+                              equipment: e.target.value as Equipment,
+                            })
+                          }
+                        >
+                          {Object.entries(equipmentLabels).map(
+                            ([key, label]) => (
+                              <option key={key} value={key}>
+                                {label}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
+                      <label>
+                        Agrupación
+                        <select
+                          aria-label={`Agrupación ${bi + 1}.${ei + 1}`}
+                          value={ex.supersetId ?? ""}
+                          onChange={(e) =>
+                            regroup(
+                              bi,
+                              ex.id,
+                              e.target.value === "new"
+                                ? crypto.randomUUID()
+                                : e.target.value || null,
+                            )
+                          }
+                        >
+                          <option value="">Individual</option>
+                          {groups.map((g, j) =>
+                            g.paired ? (
+                              <option key={g.id} value={g.id}>
+                                Superset {j + 1}
+                              </option>
+                            ) : null,
+                          )}
+                          <option value="new">+ Nuevo superset</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label>
+                      Ejercicio {ei + 1}
+                      <input
+                        aria-label={`Nombre ejercicio ${bi + 1}.${ei + 1}`}
+                        required
+                        maxLength={120}
+                        value={ex.name}
+                        onChange={(e) =>
+                          exercise(bi, ei, {
+                            name: e.target.value,
+                            exerciseId: crypto.randomUUID(),
+                          })
+                        }
+                      />
+                    </label>
+                    <div className="metrics">
+                      <label>
+                        Objetivo
+                        <input
+                          aria-label={`Objetivo ${bi + 1}.${ei + 1}`}
+                          type="number"
+                          step="any"
+                          min="0"
+                          max="1000000"
+                          required
+                          value={ex.target}
+                          onChange={(e) =>
+                            exercise(bi, ei, { target: Number(e.target.value) })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Unidad
+                        <select
+                          value={ex.unit}
+                          onChange={(e) =>
+                            exercise(bi, ei, {
+                              unit: e.target
+                                .value as PrescribedExercise["unit"],
+                            })
+                          }
+                        >
+                          {units.map((u) => (
+                            <option key={u}>{u}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Carga (kg)
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          max="1000000"
+                          value={ex.loadKg ?? ""}
+                          placeholder="Sin definir"
+                          onChange={(e) =>
+                            exercise(bi, ei, {
+                              loadKg:
+                                e.target.value === ""
+                                  ? null
+                                  : Number(e.target.value),
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Descanso (s)
+                        <input
+                          type="number"
+                          min="0"
+                          max="1000000"
+                          value={ex.restSeconds}
+                          onChange={(e) =>
+                            exercise(bi, ei, {
+                              restSeconds: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={ex.uncertain}
+                        onChange={(e) =>
+                          exercise(bi, ei, { uncertain: e.target.checked })
+                        }
+                      />{" "}
+                      Transcripción por confirmar
+                    </label>
+                    <div className="actions">
+                      <button
+                        type="button"
+                        aria-label={`Subir ${ex.name}`}
+                        disabled={withinGroup === 0}
+                        onClick={() =>
+                          block(bi, {
+                            exercises: move(b.exercises, ei, ei - 1),
+                          })
+                        }
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Bajar ${ex.name}`}
+                        disabled={withinGroup === group.exercises.length - 1}
+                        onClick={() =>
+                          block(bi, {
+                            exercises: move(b.exercises, ei, ei + 1),
+                          })
+                        }
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="quiet danger"
+                        disabled={b.exercises.length === 1}
+                        onClick={() =>
+                          block(bi, {
+                            exercises: b.exercises.filter(
+                              (x) => x.id !== ex.id,
+                            ),
+                          })
+                        }
+                      >
+                        Quitar ejercicio
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {group.paired && (
                 <button
                   type="button"
-                  aria-label={`Subir ${ex.name}`}
-                  disabled={ei === 0}
-                  onClick={() =>
-                    block(bi, { exercises: move(b.exercises, ei, ei - 1) })
-                  }
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Bajar ${ex.name}`}
-                  disabled={ei === b.exercises.length - 1}
-                  onClick={() =>
-                    block(bi, { exercises: move(b.exercises, ei, ei + 1) })
-                  }
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="quiet danger"
-                  disabled={b.exercises.length === 1}
+                  className="outline"
                   onClick={() =>
                     block(bi, {
-                      exercises: b.exercises.filter((x) => x.id !== ex.id),
+                      exercises: exerciseGroups([
+                        ...b.exercises,
+                        blankExercise(group.id),
+                      ]).flatMap((g) => g.exercises),
                     })
                   }
                 >
-                  Quitar ejercicio
+                  + Añadir a este superset
                 </button>
-              </div>
-            </div>
+              )}
+            </section>
           ))}
           <button
             type="button"
@@ -304,6 +447,22 @@ export default function Editor({
             }
           >
             + Añadir ejercicio
+          </button>
+          <button
+            type="button"
+            className="outline"
+            onClick={() => {
+              const id = crypto.randomUUID();
+              block(bi, {
+                exercises: [
+                  ...b.exercises,
+                  blankExercise(id),
+                  blankExercise(id),
+                ],
+              });
+            }}
+          >
+            + Añadir superset
           </button>
         </section>
       ))}

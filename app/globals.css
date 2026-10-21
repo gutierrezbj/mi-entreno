@@ -595,3 +595,179 @@ textarea {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* Each superset is a distinct unit; equipment is labelled in text as well as colour. */
+.plan-supersets {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+.superset-card {
+  border: 1px solid #3b4b40;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #151e18;
+}
+.superset-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #26332a;
+}
+.superset-heading h3 {
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+.superset-heading p {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 1px 0 0;
+}
+.superset-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 1px solid #536b46;
+  border-radius: 9px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+.superset-link {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 22px;
+}
+.superset-exercise {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px;
+}
+.superset-exercise + .superset-exercise {
+  border-top: 1px dashed #3a4b3e;
+}
+.exercise-order {
+  align-self: flex-start;
+  color: #9cae9f;
+  font-size: 11px;
+  padding-top: 4px;
+  font-weight: 700;
+}
+.exercise-description {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 7px;
+}
+.exercise-name {
+  font-size: 17px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.exercise-target {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 25px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.7px;
+}
+.exercise-target small {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.equipment-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.equipment-machine {
+  color: #a9d5f4;
+}
+.equipment-bodyweight {
+  color: #d4f879;
+}
+.equipment-weighted {
+  color: #e7c5f2;
+}
+.equipment-unspecified {
+  color: var(--muted);
+}
+.equipment-tag svg {
+  flex-shrink: 0;
+}
+.exercise-description .badge {
+  margin: 0;
+}
+.workout-superset {
+  border: 1px solid #465d3c;
+  border-radius: 18px;
+  background: #131b15;
+  overflow: hidden;
+  margin-bottom: 26px;
+}
+.workout-superset .result {
+  margin: 12px;
+  border-radius: 12px;
+}
+.workout-superset .result .section-heading {
+  margin-top: 10px;
+}
+.editor-superset {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 22px 0;
+  background: #131c16;
+}
+.editor-superset .superset-heading {
+  flex-wrap: wrap;
+}
+.editor-superset .superset-heading .actions {
+  margin-left: auto;
+}
+.editor-superset .editor-exercise {
+  padding: 18px;
+  margin: 0;
+}
+.editor-superset .editor-exercise > .equipment-tag {
+  margin-bottom: 14px;
+}
+.editor-superset > .outline {
+  margin: 12px 18px 18px;
+}
+.editor-block > .outline {
+  margin: 8px 8px 0 0;
+}
+@media (max-width: 380px) {
+  .superset-exercise {
+    padding: 16px 12px;
+    gap: 8px;
+  }
+  .exercise-name {
+    font-size: 16px;
+  }
+  .exercise-target {
+    font-size: 22px;
+  }
+  .superset-heading {
+    padding: 12px;
+  }
+  .equipment-tag {
+    font-size: 10px;
+  }
+}

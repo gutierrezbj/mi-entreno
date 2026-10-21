@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+const testOrigin = process.env.APP_ORIGIN ?? "http://localhost:3000";
 test("private mobile flow: edit, train, recover, offline save, idempotent sync and history", async ({
   page,
   context,
@@ -18,9 +19,28 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   await expect(
     page.getByRole("button", { name: "Comenzar sesión" }),
   ).toBeVisible();
+  const firstBlock = page.locator("details.plan-block").first();
+  await expect(firstBlock.locator(".superset-card")).toHaveCount(4);
+  const firstPair = firstBlock.getByRole("region", {
+    name: "Superset 1",
+    exact: true,
+  });
+  await expect(firstPair.getByText("Air Bike", { exact: true })).toBeVisible();
+  await expect(firstPair.getByText("Burpees", { exact: true })).toBeVisible();
+  await expect(firstPair.getByText("Máquina", { exact: true })).toBeVisible();
+  await expect(
+    firstPair.getByText("Peso corporal", { exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Editar rutina", exact: true })
     .click();
+  await expect(page.getByLabel("Tipo 1.1", { exact: true })).toHaveValue(
+    "machine",
+  );
+  await expect(page.getByLabel("Tipo 1.2", { exact: true })).toHaveValue(
+    "bodyweight",
+  );
+  await page.getByLabel("Tipo 1.2", { exact: true }).selectOption("weighted");
   await page.getByLabel("Objetivo 1.1", { exact: true }).fill("425");
   await page
     .getByRole("button", { name: "Guardar rutina", exact: true })
@@ -29,6 +49,17 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
     page.getByRole("button", { name: "Comenzar sesión" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Comenzar sesión" }).click();
+  const workoutPair = page.getByRole("region", {
+    name: "Superset 1 ronda 1",
+    exact: true,
+  });
+  await expect(
+    workoutPair.getByText("Air Bike", { exact: true }),
+  ).toBeVisible();
+  await expect(workoutPair.getByText("Burpees", { exact: true })).toBeVisible();
+  await expect(
+    workoutPair.getByText("Con carga", { exact: true }),
+  ).toBeVisible();
   await page.getByLabel("Real Air Bike ronda 1", { exact: true }).fill("220");
   await page
     .getByLabel("Estado Air Bike ronda 1", { exact: true })
@@ -69,8 +100,12 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   expect(saved.status).toBe("partial");
   expect(saved.results[0].actual).toBe(220);
   expect(saved.template.blocks[0].exercises[0].target).toBe(425);
+  expect(saved.template.blocks[0].exercises[1].equipment).toBe("weighted");
+  expect(saved.template.blocks[0].exercises[0].supersetId).toBe(
+    saved.template.blocks[0].exercises[1].supersetId,
+  );
   const retry = await page.request.post("/api/sessions", {
-    headers: { Origin: "http://localhost:3000" },
+    headers: { Origin: testOrigin },
     data: saved,
   });
   expect(retry.status()).toBe(200);
@@ -128,7 +163,7 @@ test("API refuses anonymous and cross-origin writes and does not cache private d
   expect(
     (
       await request.post("/api/login", {
-        headers: { Origin: "http://localhost:3000" },
+        headers: { Origin: testOrigin },
         data: { username: "no", password: "wrong" },
       })
     ).status(),

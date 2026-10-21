@@ -18,6 +18,8 @@ PWA privada, mobile-first, para registrar circuitos funcionales, marcas y progre
 
 Implementado con Next.js App Router, TypeScript, PostgreSQL 17 y Drizzle. Incluye acceso privado, constructor por bloques (crear/editar/duplicar/eliminar y reordenar con botones), objetivos y rondas, cronómetro con pausa, resultados reales por ejercicio/ronda, extras opcionales, recuperación local, guardado parcial e histórico con el plan original. Durante una sesión aparece el último valor registrado para el mismo ejercicio y unidad; no mezcla metros, repeticiones y tiempos.
 
+Cada bloque organiza la rutina inicial en cuatro supersets: Air Bike + burpees, remo + sentadillas, cinta + lunges y Ski + complementario. Las tarjetas distinguen máquina, peso corporal y trabajo con carga mediante texto e iconos, tanto en el plan como durante el entrenamiento. El constructor permite crear supersets, reagrupar ejercicios, cambiar su tipo y mover una pareja completa. Los complementarios mantienen su estado «por confirmar»; la cinta del último bloque se identifica como máquina y no se convierte en un ejercicio corporal.
+
 La fecha inicial es un registro retrospectivo: tres rondas declaradas, **sin resultados individuales ni duración medida**. Los 45 minutos son una referencia. Los complementarios siguen marcados «por confirmar» hasta que se revisen.
 
 ### Desarrollo
@@ -46,7 +48,7 @@ npm run test:local
 docker compose -f compose.test.yaml down
 ```
 
-`test:local` configura credenciales exclusivas de prueba, aplica migraciones y seed, ejecuta la integración PostgreSQL y abre Chromium con viewport móvil contra la compilación de producción. No lee `.env`. La base `mi_entreno_test` usa un contenedor con almacenamiento temporal, puerto 54329, y la prueba de persistencia rechaza otras bases. Para repetir E2E, reinicia el contenedor desechable con `down` y `up`: la prueba deja una sesión intencionalmente para verificar el histórico. No ejecutes el servidor de desarrollo a la vez en el puerto 3000.
+`test:local` configura credenciales exclusivas de prueba, aplica migraciones y seed, ejecuta la integración PostgreSQL y abre Chromium con viewport móvil contra la compilación de producción. No lee `.env`. La base `mi_entreno_test` usa un contenedor con almacenamiento temporal, puerto 54329, y la prueba de persistencia rechaza otras bases. Para repetir E2E, reinicia el contenedor desechable con `down` y `up`: la prueba deja una sesión intencionalmente para verificar el histórico. Las pruebas rechazan reutilizar un servidor ya abierto. Para conservar la vista previa en el puerto 3000, usa `TEST_PORT=3100 npm run test:local`.
 
 La CI ejecuta estos controles en cada PR. Capturas y trazas de los fallos se guardan como artefactos. Las capturas de la ejecución local están en `test-results/`; contienen datos ficticios de pruebas y no se versionan por defecto.
 

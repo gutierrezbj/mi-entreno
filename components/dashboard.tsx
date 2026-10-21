@@ -16,6 +16,8 @@ import {
   type LocalState,
 } from "@/lib/local";
 import Editor from "./editor";
+import PlanStructure from "./plan-structure";
+import { groupSummary, withStructure } from "@/lib/structure";
 import Workout from "./workout";
 import History from "./history";
 type Data = {
@@ -181,7 +183,12 @@ export default function Dashboard({ userId }: { userId: string }) {
       setView("workout");
       return;
     }
-    if (persist({ ...localRef.current, draft: startSession(template) })) {
+    if (
+      persist({
+        ...localRef.current,
+        draft: startSession(withStructure(template)),
+      })
+    ) {
       setView("workout");
       window.scrollTo(0, 0);
     }
@@ -488,25 +495,13 @@ export default function Dashboard({ userId }: { userId: string }) {
                       <span>
                         <strong>{b.name}</strong>
                         <span className="muted small">
-                          {b.exercises.length} ejercicios · {b.rounds}{" "}
+                          {groupSummary(b.exercises)} · {b.rounds}{" "}
                           {b.rounds === 1 ? "ronda" : "rondas"}
                         </span>
                       </span>
                       <span className="expand">+</span>
                     </summary>
-                    {b.exercises.map((e) => (
-                      <div className="plan-row" key={e.id}>
-                        <span>
-                          {e.name}
-                          {e.uncertain && (
-                            <span className="badge">Por confirmar</span>
-                          )}
-                        </span>
-                        <strong>
-                          {e.target} <small>{e.unit}</small>
-                        </strong>
-                      </div>
-                    ))}
+                    <PlanStructure exercises={b.exercises} />
                   </details>
                 ))}
                 <p className="muted small">

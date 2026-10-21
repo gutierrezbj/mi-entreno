@@ -1,3 +1,4 @@
+import { withStructure } from "./structure";
 import type {
   WorkoutTemplate,
   WorkoutSession,
@@ -24,7 +25,7 @@ export const initialExercises: ExerciseDefinition[] = names.map((name, i) => ({
   defaultUnit: [0, 2, 4, 6].includes(i) ? "m" : "reps",
   media: [],
 }));
-export const initialTemplate: WorkoutTemplate = {
+const seedTemplate: WorkoutTemplate = {
   id: uuid(100),
   version: 1,
   name: "Vuelta al entrenamiento",
@@ -57,6 +58,7 @@ export const initialTemplate: WorkoutTemplate = {
     }),
   })),
 };
+export const initialTemplate = withStructure(seedTemplate);
 export const initialSession: WorkoutSession = {
   id: uuid(500),
   template: initialTemplate,

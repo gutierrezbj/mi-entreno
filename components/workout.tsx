@@ -12,6 +12,8 @@ import {
   type WorkoutSession,
   units,
 } from "@/lib/model";
+import { exerciseGroups } from "@/lib/structure";
+import EquipmentTag from "./equipment-tag";
 export default function Workout({
   draft,
   history,
@@ -99,117 +101,145 @@ export default function Workout({
               Ronda {round + 1} / {b.rounds}
             </span>
           </div>
-          {b.exercises.map((ex) => {
-            const r = session.results.find(
-              (r) => r.prescribedId === ex.id && r.round === round + 1,
-            )!;
-            const previous = previousResult(history, ex.exerciseId, ex.unit);
-            return (
-              <article className={`card result ${r.status}`} key={r.id}>
-                <div className="section-heading">
-                  <h3>{ex.name}</h3>
-                  <span className="target">
-                    {ex.target} <small>{ex.unit}</small>
-                  </span>
-                </div>
-                {ex.uncertain && <span className="badge">Por confirmar</span>}
-                <p className="muted small">
-                  Objetivo{ex.loadKg !== null ? ` · ${ex.loadKg} kg` : ""}
-                  {ex.restSeconds ? ` · Descanso ${ex.restSeconds} s` : ""}
-                </p>
-                {previous && (
-                  <p className="previous">
-                    Anterior: {previous.actual} {ex.unit}
-                    {previous.loadKg !== null
-                      ? ` · ${previous.loadKg} kg`
-                      : ""}{" "}
-                    ·{" "}
-                    {new Date(previous.date + "T12:00:00").toLocaleDateString(
-                      "es-ES",
+          {exerciseGroups(b.exercises).map((group, groupIndex) => (
+            <section
+              className="workout-superset"
+              key={group.id}
+              aria-label={`${group.paired ? "Superset" : "Ejercicio individual"} ${groupIndex + 1} ronda ${round + 1}`}
+            >
+              <div className="superset-heading">
+                <span className="superset-index">
+                  {String(groupIndex + 1).padStart(2, "0")}
+                </span>
+                <h3>
+                  {group.paired
+                    ? `Superset ${groupIndex + 1}`
+                    : "Ejercicio individual"}
+                </h3>
+              </div>
+              {group.exercises.map((ex) => {
+                const r = session.results.find(
+                  (r) => r.prescribedId === ex.id && r.round === round + 1,
+                )!;
+                const previous = previousResult(
+                  history,
+                  ex.exerciseId,
+                  ex.unit,
+                );
+                return (
+                  <article className={`card result ${r.status}`} key={r.id}>
+                    <EquipmentTag kind={ex.equipment} />
+                    <div className="section-heading">
+                      <h3>{ex.name}</h3>
+                      <span className="target">
+                        {ex.target} <small>{ex.unit}</small>
+                      </span>
+                    </div>
+                    {ex.uncertain && (
+                      <span className="badge">Por confirmar</span>
                     )}
-                  </p>
-                )}
-                <div className="metrics">
-                  <label>
-                    Real ({ex.unit})
-                    <input
-                      aria-label={`Real ${ex.name} ronda ${round + 1}`}
-                      inputMode="decimal"
-                      type="number"
-                      min="0"
-                      max="1000000"
-                      step="any"
-                      placeholder="Sin registrar"
-                      value={r.actual ?? ""}
-                      onChange={(e) =>
-                        result(r.id, {
-                          actual:
-                            e.target.value === ""
-                              ? null
-                              : Number(e.target.value),
-                          status: "partial",
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Carga real (kg)
-                    <input
-                      aria-label={`Carga ${ex.name} ronda ${round + 1}`}
-                      inputMode="decimal"
-                      type="number"
-                      min="0"
-                      max="1000000"
-                      step="any"
-                      placeholder="Sin registrar"
-                      value={r.loadKg ?? ""}
-                      onChange={(e) =>
-                        result(r.id, {
-                          loadKg:
-                            e.target.value === ""
-                              ? null
-                              : Number(e.target.value),
-                          status: "partial",
-                        })
-                      }
-                    />
-                  </label>
-                </div>
-                <label className="small">
-                  Estado
-                  <select
-                    aria-label={`Estado ${ex.name} ronda ${round + 1}`}
-                    value={r.status}
-                    onChange={(e) => {
-                      const status = e.target.value as ExerciseResult["status"];
-                      result(r.id, {
-                        status,
-                        ...(["pending", "skipped"].includes(status)
-                          ? { actual: null, loadKg: null }
-                          : {}),
-                      });
-                    }}
-                  >
-                    <option value="pending">Sin registrar</option>
-                    <option value="partial">Parcial</option>
-                    <option value="done" disabled={r.actual === null}>
-                      Completado
-                    </option>
-                    <option value="skipped">Omitido</option>
-                  </select>
-                </label>
-                <details>
-                  <summary>Notas del ejercicio</summary>
-                  <textarea
-                    maxLength={2000}
-                    value={r.notes}
-                    onChange={(e) => result(r.id, { notes: e.target.value })}
-                    aria-label={`Notas ${ex.name}`}
-                  />
-                </details>
-              </article>
-            );
-          })}
+                    <p className="muted small">
+                      Objetivo{ex.loadKg !== null ? ` · ${ex.loadKg} kg` : ""}
+                      {ex.restSeconds ? ` · Descanso ${ex.restSeconds} s` : ""}
+                    </p>
+                    {previous && (
+                      <p className="previous">
+                        Anterior: {previous.actual} {ex.unit}
+                        {previous.loadKg !== null
+                          ? ` · ${previous.loadKg} kg`
+                          : ""}{" "}
+                        ·{" "}
+                        {new Date(
+                          previous.date + "T12:00:00",
+                        ).toLocaleDateString("es-ES")}
+                      </p>
+                    )}
+                    <div className="metrics">
+                      <label>
+                        Real ({ex.unit})
+                        <input
+                          aria-label={`Real ${ex.name} ronda ${round + 1}`}
+                          inputMode="decimal"
+                          type="number"
+                          min="0"
+                          max="1000000"
+                          step="any"
+                          placeholder="Sin registrar"
+                          value={r.actual ?? ""}
+                          onChange={(e) =>
+                            result(r.id, {
+                              actual:
+                                e.target.value === ""
+                                  ? null
+                                  : Number(e.target.value),
+                              status: "partial",
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Carga real (kg)
+                        <input
+                          aria-label={`Carga ${ex.name} ronda ${round + 1}`}
+                          inputMode="decimal"
+                          type="number"
+                          min="0"
+                          max="1000000"
+                          step="any"
+                          placeholder="Sin registrar"
+                          value={r.loadKg ?? ""}
+                          onChange={(e) =>
+                            result(r.id, {
+                              loadKg:
+                                e.target.value === ""
+                                  ? null
+                                  : Number(e.target.value),
+                              status: "partial",
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <label className="small">
+                      Estado
+                      <select
+                        aria-label={`Estado ${ex.name} ronda ${round + 1}`}
+                        value={r.status}
+                        onChange={(e) => {
+                          const status = e.target
+                            .value as ExerciseResult["status"];
+                          result(r.id, {
+                            status,
+                            ...(["pending", "skipped"].includes(status)
+                              ? { actual: null, loadKg: null }
+                              : {}),
+                          });
+                        }}
+                      >
+                        <option value="pending">Sin registrar</option>
+                        <option value="partial">Parcial</option>
+                        <option value="done" disabled={r.actual === null}>
+                          Completado
+                        </option>
+                        <option value="skipped">Omitido</option>
+                      </select>
+                    </label>
+                    <details>
+                      <summary>Notas del ejercicio</summary>
+                      <textarea
+                        maxLength={2000}
+                        value={r.notes}
+                        onChange={(e) =>
+                          result(r.id, { notes: e.target.value })
+                        }
+                        aria-label={`Notas ${ex.name}`}
+                      />
+                    </details>
+                  </article>
+                );
+              })}
+            </section>
+          ))}
         </section>
       ))}
       <section className="card">

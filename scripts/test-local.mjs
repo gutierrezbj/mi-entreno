@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { randomBytes, scryptSync } from "node:crypto";
 const password = "local-test-password-123";
 const salt = randomBytes(16).toString("hex");
+const port = process.env.TEST_PORT ?? "3000";
 const env = {
   ...process.env,
   DATABASE_URL:
@@ -11,7 +12,8 @@ const env = {
   AUTH_PASSWORD_HASH:
     salt + ":" + scryptSync(password, salt, 64).toString("hex"),
   TEST_PASSWORD: password,
-  APP_ORIGIN: "http://localhost:3000",
+  APP_ORIGIN: `http://localhost:${port}`,
+  PORT: port,
 };
 for (const command of [
   "db:migrate",

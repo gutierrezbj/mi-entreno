@@ -22,6 +22,10 @@ export const prescribedSchema = z.object({
   loadKg: number.nullable(),
   restSeconds: number,
   uncertain: z.boolean(),
+  equipment: z
+    .enum(["machine", "bodyweight", "weighted", "unspecified"])
+    .optional(),
+  supersetId: id.nullable().optional(),
 });
 export const blockSchema = z.object({
   id,
@@ -44,6 +48,15 @@ export const templateSchema = z
     ];
     if (new Set(ids).size !== ids.length)
       ctx.addIssue({ code: "custom", message: "Identificadores repetidos" });
+    for (const b of t.blocks)
+      for (const ex of b.exercises) {
+        if (ex.supersetId && ids.includes(ex.supersetId))
+          ctx.addIssue({
+            code: "custom",
+            message:
+              "El identificador del superset debe ser independiente de los ejercicios",
+          });
+      }
     if (t.blocks.reduce((n, b) => n + b.rounds * b.exercises.length, 0) > 500)
       ctx.addIssue({
         code: "custom",

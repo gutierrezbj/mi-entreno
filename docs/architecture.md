@@ -28,3 +28,9 @@ No existe acceso directo a HealthKit ni a sensores Watch desde esta PWA. No hay 
 La tabla de sesiones reserva `source` y `external_id`, con índice único por propietario/origen/ID externo. El API web acepta únicamente `source=manual`: una app compañera necesitará un endpoint y autenticación propios, importación con origen verificable, consentimiento, revocación y eliminación selectiva de datos importados. No reutilizar la cookie de navegador ni aceptar una fuente HealthKit arbitraria desde el API actual. Los datos importados deben conservar su procedencia y no sumar dos veces una misma actividad.
 
 Los campos externos son una preparación del almacenamiento, no una integración. La investigación y el ADR completo de factibilidad de #3 siguen pendientes. Ninguna función del MVP requiere reloj.
+
+## Supersets y material
+
+Cada ejercicio prescrito admite `supersetId` y `equipment` (`machine`, `bodyweight`, `weighted`, `unspecified`). Son campos opcionales para mantener compatibles los snapshots y la cola offline anteriores: validar una sesión antigua no añade defaults ni cambia su hash de deduplicación. Las nuevas sesiones y las rutinas guardadas desde el constructor conservan los campos explícitos.
+
+`lib/structure.ts` comparte la agrupación entre el plan, el constructor y el entrenamiento. Las prescripciones de la rutina inicial anterior al cambio se pueden presentar agrupadas a partir de sus identificadores conocidos, sin modificar el histórico almacenado. No se deduce el material de la unidad, del nombre o del orden de ejercicios personalizados; estos permanecen sin clasificar hasta que se editen. Las prescripciones inciertas siguen etiquetadas y no se infieren cargas.
