@@ -1,3 +1,4 @@
+import Icon from "./icon";
 import { formatDuration, progress, type WorkoutSession } from "@/lib/model";
 const date = (s: string) =>
   new Date(s + "T12:00:00").toLocaleDateString("es-ES", {
@@ -14,9 +15,10 @@ export default function History({
 }) {
   return (
     <>
-      <p className="eyebrow">TU RECORRIDO</p>
-      <h1>Cada sesión cuenta.</h1>
-      <p className="muted">
+      <div className="screen-title">
+        <h1>Historial</h1>
+      </div>
+      <p className="muted screen-intro">
         Tus registros, tal como fueron. Sin penalizar lo parcial.
       </p>
       {sessions.length === 0 && (
@@ -33,23 +35,40 @@ export default function History({
           return (
             <details className="card history" key={s.id}>
               <summary>
-                <span className="eyebrow">{date(s.date)}</span>
-                <h2>{s.template.name}</h2>
-                <div className="history-meta">
-                  <span className="pill">
-                    {s.status === "partial" ? "Registro parcial" : "Completada"}
-                  </span>
-                  <span>{formatDuration(s.durationMs)}</span>
-                  {pending.has(s.id) && (
-                    <span className="badge">Pendiente de sincronizar</span>
-                  )}
+                <span className="history-icon">
+                  <Icon name="dumbbell" size={23} />
+                </span>
+                <div className="history-summary-copy">
+                  <span className="eyebrow">{date(s.date)}</span>
+                  <h2>{s.template.name}</h2>
+                  <div className="history-meta">
+                    <span
+                      className={`pill ${s.status === "partial" ? "partial" : ""}`}
+                    >
+                      {s.status === "partial"
+                        ? "Registro parcial"
+                        : "Completada"}
+                    </span>
+                    <span>{formatDuration(s.durationMs)}</span>
+                    {pending.has(s.id) && (
+                      <span className="badge">Pendiente de sincronizar</span>
+                    )}
+                  </div>
+                  <p className="muted small">
+                    {s.results.length
+                      ? `${p.recorded} ${p.recorded === 1 ? "registro anotado" : "registros anotados"} · ${p.done} completados`
+                      : "Sin métricas por ejercicio"}{" "}
+                    · Ver detalle ↓
+                  </p>
                 </div>
-                <p className="muted small">
-                  {s.results.length
-                    ? `${p.recorded} ${p.recorded === 1 ? "registro anotado" : "registros anotados"} · ${p.done} completados`
-                    : "Sin métricas por ejercicio"}{" "}
-                  · Ver detalle ↓
-                </p>
+                <span
+                  className={`history-status ${s.status === "partial" ? "partial" : ""}`}
+                >
+                  <Icon
+                    name={s.status === "partial" ? "activity" : "check"}
+                    size={21}
+                  />
+                </span>
               </summary>
               <p className="small muted">
                 Plan guardado · versión {s.template.version} · Referencia{" "}

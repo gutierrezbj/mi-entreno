@@ -16,8 +16,12 @@ import {
   type LocalState,
 } from "@/lib/local";
 import Editor from "./editor";
-import PlanStructure from "./plan-structure";
-import { groupSummary, withStructure } from "@/lib/structure";
+import Home from "./screens/home";
+import Routines from "./screens/routines";
+import Insights from "./screens/insights";
+import SessionSummary from "./screens/session-summary";
+import Icon, { type IconName } from "./icon";
+import { withStructure } from "@/lib/structure";
 import Workout from "./workout";
 import History from "./history";
 type Data = {
@@ -46,9 +50,9 @@ export default function Dashboard({ userId }: { userId: string }) {
   const storedRaw = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [view, setView] = useState<"routine" | "workout" | "history">(
-    "routine",
-  );
+  const [view, setView] = useState<
+    "home" | "routine" | "workout" | "history" | "insights" | "more" | "summary"
+  >("home");
   const [selected, setSelected] = useState("");
   const [editor, setEditor] = useState<{
     template: WorkoutTemplate;
@@ -58,7 +62,8 @@ export default function Dashboard({ userId }: { userId: string }) {
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const syncingRef = useRef(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [routineDetail, setRoutineDetail] = useState(false);
+  const [lastSaved, setLastSaved] = useState<WorkoutSession | null>(null);
   const persist = useCallback(
     (next: LocalState) => {
       try {
@@ -178,11 +183,12 @@ export default function Dashboard({ userId }: { userId: string }) {
     ...local.pending,
   ];
   function start() {
-    if (!template || !ready) return;
+    if (!ready) return;
     if (local.draft) {
       setView("workout");
       return;
     }
+    if (!template) return;
     if (
       persist({
         ...localRef.current,
@@ -198,7 +204,8 @@ export default function Dashboard({ userId }: { userId: string }) {
     try {
       const session = finishSession(localRef.current.draft);
       if (persist(enqueue(localRef.current, session))) {
-        setView("history");
+        setLastSaved(session);
+        setView("summary");
         window.scrollTo(0, 0);
         void sync();
       }
@@ -217,60 +224,134 @@ export default function Dashboard({ userId }: { userId: string }) {
       },
     });
   }
+  function navigate(next: typeof view) {
+    setEditor(null);
+    setView(next);
+    if (next === "routine") setRoutineDetail(false);
+    window.scrollTo(0, 0);
+  }
+  function selectRoutine(id: string) {
+    setSelected(id);
+    setRoutineDetail(true);
+    setView("routine");
+    window.scrollTo(0, 0);
+  }
+  function editRoutine(t: WorkoutTemplate) {
+    setView("routine");
+    setRoutineDetail(true);
+    setEditor({ template: t, isNew: false });
+  }
+  function newRoutine() {
+    setView("routine");
+    setRoutineDetail(true);
+    setEditor({
+      isNew: true,
+      template: {
+        id: crypto.randomUUID(),
+        version: 1,
+        name: "Mi rutina",
+        targetMinutes: 45,
+        blocks: [
+          {
+            id: crypto.randomUUID(),
+            name: "Bloque 1",
+            rounds: 1,
+            exercises: [
+              {
+                id: crypto.randomUUID(),
+                exerciseId: crypto.randomUUID(),
+                name: "Ejercicio",
+                unit: "reps",
+                target: 1,
+                loadKg: null,
+                restSeconds: 0,
+                uncertain: false,
+                equipment: "unspecified",
+                supersetId: null,
+              },
+            ],
+          },
+        ],
+      },
+    });
+  }
+  async function signOut() {
+    if (localRef.current.draft || localRef.current.pending.length) {
+      setMessage(
+        "Guarda la sesión y sincroniza los pendientes antes de salir.",
+      );
+      return;
+    }
+    try {
+      await api("logout", "POST");
+      localStorage.removeItem(localKey(userId));
+      location.href = "/login";
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "No se pudo salir");
+    }
+  }
+  const navItems: { id: typeof view; label: string; icon: IconName }[] = [
+    { id: "home", label: "Inicio", icon: "home" },
+    { id: "routine", label: "Rutinas", icon: "routines" },
+    { id: "history", label: "Historial", icon: "history" },
+    { id: "insights", label: "Progreso", icon: "progress" },
+    { id: "more", label: "Más", icon: "more" },
+  ];
   return (
-    <div className="app-shell">
-      <header>
-        <a className="brand" href="/" aria-label="Mi Entreno, inicio">
-          <span className="logo">M/</span> MI ENTRENO
-        </a>
+    <div className={`app-shell view-${view}`}>
+      <header className="app-header">
         <button
-          className="quiet small"
-          onClick={async () => {
-            if (localRef.current.draft || localRef.current.pending.length) {
-              setMessage(
-                "Guarda la sesión y sincroniza los pendientes antes de salir.",
-              );
-              return;
-            }
-            try {
-              await api("logout", "POST");
-              localStorage.removeItem(localKey(userId));
-              location.href = "/login";
-            } catch (e) {
-              setMessage(e instanceof Error ? e.message : "No se pudo salir");
-            }
-          }}
+          className="brand"
+          onClick={() => navigate("home")}
+          aria-label="Mi Entreno, inicio"
         >
-          Salir
+          <span className="brand-mark">
+            <Icon name="activity" size={22} />
+          </span>
+          Mi Entreno
+        </button>
+        <button
+          className="profile-button"
+          aria-label="Ajustes"
+          onClick={() => navigate("more")}
+        >
+          <Icon name="settings" size={20} />
         </button>
       </header>
       <main>
-        <div className="connection">
-          <span className={online ? "dot" : "dot offline"} />
-          {syncing
-            ? "Sincronizando…"
-            : online
-              ? "Espacio privado"
-              : "Sin conexión · Guardado local"}
-          {local.pending.length > 0 && (
-            <button
-              className="quiet"
-              disabled={syncing}
-              onClick={() => void sync()}
-            >
-              Sincronizar ({local.pending.length})
-            </button>
-          )}
-        </div>
+        {(syncing || !online || local.pending.length > 0) && (
+          <div className="connection">
+            <span className={online ? "dot" : "dot offline"} />
+            {syncing
+              ? "Sincronizando…"
+              : online
+                ? "Guardado local pendiente"
+                : "Sin conexión · Guardado local"}
+            {local.pending.length > 0 && (
+              <button
+                className="quiet"
+                disabled={syncing}
+                onClick={() => void sync()}
+              >
+                Sincronizar ({local.pending.length})
+              </button>
+            )}
+          </div>
+        )}
         {message && (
-          <div role="alert" className="notice">
+          <div
+            role={message === "Rutina guardada." ? "status" : "alert"}
+            className={`notice ${message === "Rutina guardada." ? "success" : ""}`}
+          >
             {message}
             <button
               className="quiet"
-              onClick={() => void sync()}
+              onClick={() =>
+                message === "Rutina guardada." ? setMessage("") : void sync()
+              }
               disabled={syncing || !ready}
             >
-              Reintentar
+              {message === "Rutina guardada." ? "Cerrar" : "Reintentar"}
             </button>
           </div>
         )}
@@ -313,6 +394,8 @@ export default function Dashboard({ userId }: { userId: string }) {
               }));
               setSelected(saved.id);
               setEditor(null);
+              setView("routine");
+              setRoutineDetail(true);
               setMessage("Rutina guardada.");
             }}
           />
@@ -332,220 +415,122 @@ export default function Dashboard({ userId }: { userId: string }) {
             sessions={allSessions}
             pending={new Set(local.pending.map((s) => s.id))}
           />
-        ) : (
+        ) : view === "insights" ? (
+          <Insights sessions={allSessions} />
+        ) : view === "summary" && lastSaved ? (
+          <SessionSummary
+            session={lastSaved}
+            pending={local.pending.some((s) => s.id === lastSaved.id)}
+            onHistory={() => navigate("history")}
+          />
+        ) : view === "more" ? (
           <>
-            <p className="eyebrow">TU PRÓXIMO PASO</p>
-            <h1>
-              Hoy, un poco
-              <br />
-              <em>más cerca.</em>
-            </h1>
-            <p className="muted intro">
-              Vuelve a moverte. Apunta lo que hagas.
-              <br />
-              El ritmo lo pones tú.
-            </p>
-            <div className="section-heading">
-              <h2>Mis rutinas</h2>
-              <button
-                className="quiet"
-                disabled={!loaded}
-                onClick={() =>
-                  setEditor({
-                    isNew: true,
-                    template: {
-                      id: crypto.randomUUID(),
-                      version: 1,
-                      name: "Mi rutina",
-                      targetMinutes: 45,
-                      blocks: [
-                        {
-                          id: crypto.randomUUID(),
-                          name: "Bloque 1",
-                          rounds: 1,
-                          exercises: [
-                            {
-                              id: crypto.randomUUID(),
-                              exerciseId: crypto.randomUUID(),
-                              name: "Ejercicio",
-                              unit: "reps",
-                              target: 1,
-                              loadKg: null,
-                              restSeconds: 0,
-                              uncertain: false,
-                            },
-                          ],
-                        },
-                      ],
-                    },
-                  })
-                }
-              >
-                + Nueva
-              </button>
+            <div className="screen-title">
+              <h1>Ajustes</h1>
             </div>
-            {data.templates.length > 1 && (
-              <label>
-                Selecciona rutina
-                <select
-                  value={selected}
-                  onChange={(e) => setSelected(e.target.value)}
-                >
-                  {data.templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {!template ? (
-              <p className="card muted">
-                {loaded
-                  ? "Crea una rutina para comenzar."
-                  : "Cargando tus rutinas…"}
-              </p>
-            ) : (
-              <>
-                <section className="routine-hero card">
-                  <div className="section-heading">
-                    <span className="eyebrow">CIRCUITO FUNCIONAL</span>
-                    <span className="pill">V{template.version}</span>
-                  </div>
-                  <h2>{template.name}</h2>
-                  <div className="routine-stats">
-                    <div>
-                      <strong>{template.blocks.length}</strong>
-                      <span>bloques</span>
-                    </div>
-                    <div>
-                      <strong>
-                        {template.targetMinutes}
-                        <small> min</small>
-                      </strong>
-                      <span>referencia, sin límite</span>
-                    </div>
-                  </div>
-                  <button className="primary" disabled={!ready} onClick={start}>
-                    {local.draft ? "Retomar sesión" : "Comenzar sesión"}{" "}
-                    <span>↗</span>
-                  </button>
-                  <div className="actions">
-                    <button
-                      className="quiet"
-                      onClick={() => setEditor({ template, isNew: false })}
-                    >
-                      Editar rutina
-                    </button>
-                    <button
-                      className="quiet"
-                      onClick={() => duplicate(template)}
-                    >
-                      Duplicar
-                    </button>
-                    <button
-                      className="quiet danger"
-                      onClick={() => setDeleteId(template.id)}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                  {deleteId === template.id && (
-                    <div role="alert" className="notice">
-                      ¿Eliminar esta plantilla? Las sesiones guardadas se
-                      conservan.
-                      <div className="actions">
-                        <button
-                          className="danger"
-                          onClick={async () => {
-                            try {
-                              await api("templates/" + template.id, "DELETE");
-                              setDeleteId(null);
-                              await sync();
-                            } catch (e) {
-                              setMessage(
-                                e instanceof Error
-                                  ? e.message
-                                  : "No se pudo eliminar",
-                              );
-                            }
-                          }}
-                        >
-                          Sí, eliminar
-                        </button>
-                        <button onClick={() => setDeleteId(null)}>
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </section>
-                <div className="section-heading">
-                  <h2>Tu plan de hoy</h2>
-                  <span className="muted small">Editable, siempre</span>
-                </div>
-                {template.blocks.map((b, i) => (
-                  <details
-                    className="card plan-block"
-                    key={b.id}
-                    open={i === 0}
-                  >
-                    <summary>
-                      <span className="block-number">0{i + 1}</span>
-                      <span>
-                        <strong>{b.name}</strong>
-                        <span className="muted small">
-                          {groupSummary(b.exercises)} · {b.rounds}{" "}
-                          {b.rounds === 1 ? "ronda" : "rondas"}
-                        </span>
-                      </span>
-                      <span className="expand">+</span>
-                    </summary>
-                    <PlanStructure exercises={b.exercises} />
-                  </details>
-                ))}
-                <p className="muted small">
-                  Los complementarios proceden de una transcripción incierta.
-                  Revísalos en el editor antes de entrenar.
-                </p>
-              </>
-            )}
-            <section className="card gentle">
-              <span>↗</span>
+            <section className="card profile-card">
+              <span className="profile-avatar">
+                <Icon name="activity" size={27} />
+              </span>
               <div>
-                <h3>La constancia suma.</h3>
-                <p className="muted">
-                  Una sesión parcial también es un paso adelante. No necesitas
-                  completarlo todo para registrarlo.
-                </p>
+                <h2>Mi espacio privado</h2>
+                <p className="muted small">Mi Entreno</p>
               </div>
             </section>
+            <div className="settings-list">
+              <button onClick={() => navigate("routine")}>
+                <Icon name="routines" />
+                <span>Mis rutinas</span>
+                <Icon name="arrow" size={16} />
+              </button>
+              {template && (
+                <button onClick={() => editRoutine(template)}>
+                  <Icon name="settings" />
+                  <span>Editar rutina actual</span>
+                  <Icon name="arrow" size={16} />
+                </button>
+              )}
+              <button onClick={() => navigate("history")}>
+                <Icon name="history" />
+                <span>Mi historial</span>
+                <Icon name="arrow" size={16} />
+              </button>
+              <button onClick={() => void sync()} disabled={syncing}>
+                <Icon name="sync" />
+                <span>
+                  Sincronizar{" "}
+                  {local.pending.length
+                    ? `(${local.pending.length} pendientes)`
+                    : ""}
+                </span>
+                <Icon name="arrow" size={16} />
+              </button>
+              <button className="danger" onClick={() => void signOut()}>
+                <Icon name="logout" />
+                <span>Cerrar sesión</span>
+              </button>
+            </div>
+            <p className="muted small settings-note">
+              Los borradores de entrenamiento se guardan en este dispositivo.
+              Las sesiones sincronizadas se conservan en tu servidor privado.
+            </p>
           </>
+        ) : view === "routine" ? (
+          <Routines
+            templates={data.templates}
+            selected={template}
+            detail={routineDetail}
+            onSelect={selectRoutine}
+            onBack={() => setRoutineDetail(false)}
+            onNew={newRoutine}
+            onEdit={editRoutine}
+            onDuplicate={duplicate}
+            onDelete={async (id) => {
+              await api("templates/" + id, "DELETE");
+              setRoutineDetail(false);
+              await sync();
+            }}
+            onStart={start}
+            ready={ready}
+            active={!!local.draft}
+          />
+        ) : loaded ? (
+          <Home
+            sessions={allSessions}
+            templates={
+              template
+                ? [
+                    template,
+                    ...data.templates.filter((t) => t.id !== template.id),
+                  ]
+                : data.templates
+            }
+            draft={local.draft}
+            onStart={start}
+            onRoutines={() => navigate("routine")}
+            onRoutine={selectRoutine}
+            onHistory={() => navigate("history")}
+            ready={ready}
+          />
+        ) : (
+          <p className="card muted">Cargando tu espacio…</p>
         )}
       </main>
       <nav className="bottom-nav" aria-label="Navegación principal">
-        {(
-          [
-            { id: "routine", label: "Rutinas", icon: "▦" },
-            { id: "workout", label: "Entrenar", icon: "◷" },
-            { id: "history", label: "Histórico", icon: "↗" },
-          ] as const
-        ).map((item) => (
+        {navItems.map((item) => (
           <button
-            aria-current={view === item.id ? "page" : undefined}
             key={item.id}
-            onClick={() => {
-              setEditor(null);
-              if (item.id === "workout" && !local.draft) {
-                start();
-                return;
-              }
-              setView(item.id);
-              window.scrollTo(0, 0);
-            }}
+            aria-current={
+              view === item.id ||
+              (item.id === "routine" && view === "workout") ||
+              (item.id === "history" && view === "summary")
+                ? "page"
+                : undefined
+            }
+            onClick={() => navigate(item.id)}
           >
-            <span aria-hidden="true">{item.icon}</span>
-            {item.label}
+            <Icon name={item.icon} size={21} />
+            <span>{item.label}</span>
           </button>
         ))}
       </nav>

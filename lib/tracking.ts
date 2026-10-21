@@ -44,7 +44,8 @@ export function toggleDone(
     ? { ...result, status: result.actual === null ? "pending" : "partial" }
     : { ...result, actual: result.actual ?? exercise.target, status: "done" };
 }
-export function nextExercise(session: WorkoutSession) {
+export function workoutSequence(session: WorkoutSession) {
+  const entries = [];
   for (const [blockIndex, block] of session.template.blocks.entries()) {
     for (let round = 1; round <= block.rounds; round++) {
       for (const [groupIndex, group] of exerciseGroups(
@@ -57,8 +58,8 @@ export function nextExercise(session: WorkoutSession) {
               r.round === round &&
               r.prescribedId === exercise.id,
           );
-          if (result && result.status !== "done" && result.status !== "skipped")
-            return {
+          if (result)
+            entries.push({
               blockIndex,
               block,
               round,
@@ -66,10 +67,18 @@ export function nextExercise(session: WorkoutSession) {
               group,
               exercise,
               result,
-            };
+            });
         }
       }
     }
   }
-  return null;
+  return entries;
+}
+export function nextExercise(session: WorkoutSession) {
+  return (
+    workoutSequence(session).find(
+      (entry) =>
+        entry.result.status !== "done" && entry.result.status !== "skipped",
+    ) ?? null
+  );
 }

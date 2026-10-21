@@ -15,9 +15,12 @@ import {
 import { exerciseGroups } from "@/lib/structure";
 import EquipmentTag from "./equipment-tag";
 import CompletionLine from "./completion-line";
+import NumberStepper from "./number-stepper";
+import ExerciseArt from "./exercise-art";
+import Icon from "./icon";
 import ExerciseCompletion from "./exercise-completion";
 import SessionProgress from "./session-progress";
-import { completion, nextExercise } from "@/lib/tracking";
+import { completion, nextExercise, workoutSequence } from "@/lib/tracking";
 export default function Workout({
   draft,
   history,
@@ -30,6 +33,24 @@ export default function Workout({
   onFinish: () => void;
 }) {
   const [now, setNow] = useState(Date.now());
+  const sequence = workoutSequence(draft.session);
+  const [mode, setMode] = useState<"exercise" | "circuit">("exercise");
+  const [focusedId, setFocusedId] = useState(
+    () => nextExercise(draft.session)?.result.id ?? sequence[0]?.result.id,
+  );
+  const current =
+    sequence.find((entry) => entry.result.id === focusedId) ?? sequence[0];
+  const currentIndex = sequence.findIndex(
+    (entry) => entry.result.id === current?.result.id,
+  );
+  function selectExercise(index: number) {
+    const entry = sequence[index];
+    if (!entry) return;
+    setFocusedId(entry.result.id);
+    setTab(entry.blockIndex);
+    setFocusResult({ id: entry.result.id });
+  }
+
   const [tab, setTab] = useState(
     () => nextExercise(draft.session)?.blockIndex ?? 0,
   );
@@ -64,9 +85,16 @@ export default function Workout({
     });
   }
   return (
-    <>
-      <p className="eyebrow">SESIÓN EN CURSO</p>
-      <h1>A tu ritmo.</h1>
+    <div className={`workout-view ${mode === "exercise" ? "is-focused" : ""}`}>
+      <div className="workout-title">
+        <div>
+          <p className="eyebrow">ENTRENAMIENTO</p>
+          <h1>{session.template.name}</h1>
+        </div>
+        <span className="pill">
+          Bloque {tab + 1} de {session.template.blocks.length}
+        </span>
+      </div>
       <div className="timer card">
         <div>
           <span className="eyebrow">TIEMPO ACTIVO</span>
@@ -104,9 +132,24 @@ export default function Workout({
         session={session}
         onNext={(blockIndex, resultId) => {
           setTab(blockIndex);
+          setFocusedId(resultId);
           setFocusResult({ id: resultId });
         }}
       />
+      <div className="segmented workout-mode">
+        <button
+          aria-pressed={mode === "exercise"}
+          onClick={() => setMode("exercise")}
+        >
+          Ejercicio
+        </button>
+        <button
+          aria-pressed={mode === "circuit"}
+          onClick={() => setMode("circuit")}
+        >
+          Circuito completo
+        </button>
+      </div>
       <div className="block-tabs" aria-label="Bloques">
         {session.template.blocks.map((block, i) => (
           <button
@@ -115,6 +158,14 @@ export default function Workout({
             onClick={() => {
               setFocusResult(null);
               setTab(i);
+              const entry =
+                sequence.find(
+                  (e) =>
+                    e.blockIndex === i &&
+                    e.result.status !== "done" &&
+                    e.result.status !== "skipped",
+                ) ?? sequence.find((e) => e.blockIndex === i);
+              if (entry) setFocusedId(entry.result.id);
             }}
           >
             {block.name}
@@ -131,7 +182,13 @@ export default function Workout({
         ))}
       </div>
       {Array.from({ length: b.rounds }, (_, round) => (
-        <section key={round}>
+        <section
+          key={round}
+          hidden={
+            mode === "exercise" &&
+            (current?.block.id !== b.id || current?.round !== round + 1)
+          }
+        >
           <div className="section-heading">
             <h2>{b.name}</h2>
             <span className="pill">
@@ -149,6 +206,10 @@ export default function Workout({
             <section
               className="workout-superset"
               key={group.id}
+              hidden={
+                mode === "exercise" &&
+                !group.exercises.some((ex) => ex.id === current?.exercise.id)
+              }
               aria-label={`${group.paired ? "Superset" : "Ejercicio individual"} ${groupIndex + 1} ronda ${round + 1}`}
             >
               <div className="superset-heading">
@@ -192,6 +253,7 @@ export default function Workout({
                     key={r.id}
                     id={`exercise-${r.id}`}
                     tabIndex={-1}
+                    hidden={mode === "exercise" && r.id !== current?.result.id}
                   >
                     <EquipmentTag kind={ex.equipment} />
                     <div className="section-heading">
@@ -207,6 +269,7 @@ export default function Workout({
                       Objetivo{ex.loadKg !== null ? ` · ${ex.loadKg} kg` : ""}
                       {ex.restSeconds ? ` · Descanso ${ex.restSeconds} s` : ""}
                     </p>
+                    <ExerciseArt exercise={ex} />
                     {previous && (
                       <p className="previous">
                         Anterior: {previous.actual} {ex.unit}
@@ -220,28 +283,14 @@ export default function Workout({
                       </p>
                     )}
                     <div className="metrics">
-                      <label>
-                        Real ({ex.unit})
-                        <input
-                          aria-label={`Real ${ex.name} ronda ${round + 1}`}
-                          inputMode="decimal"
-                          type="number"
-                          min="0"
-                          max="1000000"
-                          step="any"
-                          placeholder="Sin registrar"
-                          value={r.actual ?? ""}
-                          onChange={(e) =>
-                            result(r.id, {
-                              actual:
-                                e.target.value === ""
-                                  ? null
-                                  : Number(e.target.value),
-                              status: "partial",
-                            })
-                          }
-                        />
-                      </label>
+                      <NumberStepper
+                        label={`Real (${ex.unit})`}
+                        name={`Real ${ex.name} ronda ${round + 1}`}
+                        value={r.actual}
+                        onChange={(actual) =>
+                          result(r.id, { actual, status: "partial" })
+                        }
+                      />
                       <label>
                         Carga real (kg)
                         <input
@@ -312,8 +361,36 @@ export default function Workout({
           ))}
         </section>
       ))}
-      <section className="card">
-        <h2>Algo más, si te apetece</h2>
+      {mode === "exercise" && current && (
+        <div className="exercise-navigation">
+          <button
+            className="quiet"
+            disabled={currentIndex === 0}
+            onClick={() => selectExercise(currentIndex - 1)}
+          >
+            <Icon name="back" size={16} />
+            Anterior
+          </button>
+          <span>
+            {currentIndex + 1} / {sequence.length}
+          </span>
+          {sequence[currentIndex + 1] ? (
+            <button
+              className="secondary"
+              onClick={() => selectExercise(currentIndex + 1)}
+            >
+              Siguiente: {sequence[currentIndex + 1].exercise.name}
+              <Icon name="arrow" size={15} />
+            </button>
+          ) : (
+            <button className="secondary" onClick={() => setMode("circuit")}>
+              Ver circuito
+            </button>
+          )}
+        </div>
+      )}
+      <details className="card extras-panel">
+        <summary>Extras opcionales</summary>
         <p className="muted">
           Extras independientes del circuito. La cuerda es opcional; hasta 25
           min es una aspiración futura.
@@ -426,7 +503,7 @@ export default function Workout({
         >
           + Registrar extra
         </button>
-      </section>
+      </details>
       <label>
         Cómo ha ido
         <textarea
@@ -449,6 +526,6 @@ export default function Workout({
           Finalizar y guardar{stats.done === stats.total ? "" : " parcial"} →
         </button>
       </div>
-    </>
+    </div>
   );
 }

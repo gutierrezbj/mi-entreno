@@ -22,6 +22,10 @@ Cada bloque organiza la rutina inicial en cuatro supersets: Air Bike + burpees, 
 
 Durante el entrenamiento puedes marcar cada ejercicio como hecho. Si aún no has introducido un valor, el botón dice explícitamente «He hecho [objetivo] [unidad]» y ese toque confirma la cantidad; las cargas nunca se rellenan solas. Si has anotado otra cantidad, «Marcar como hecho» conserva ese valor. Desmarcar mantiene la anotación como parcial. Una barra persistente muestra los ejercicios confirmados de la sesión y lleva al siguiente pendiente; también hay avance de ronda, contadores por superset y una línea del valor real frente al objetivo de cada ejercicio. Parciales y omitidos se muestran aparte y no cuentan como completados. Los extras opcionales quedan fuera del denominador del circuito.
 
+La interfaz toma como referencia la dirección visual acordada: negro y verde esmeralda, tarjetas compactas y navegación inferior entre Inicio, Rutinas, Historial, Progreso y Más. Inicio muestra la actividad semanal registrada y una portada original generada con ImageGen ([archivo y prompt](docs/assets/training-hero.md)). El entrenamiento abre un ejercicio cada vez, con controles grandes para anotar el valor real, y permite cambiar a «Circuito completo» para ver los supersets. Al guardar aparece un resumen que distingue una sesión completa de una parcial. Progreso calcula sus cifras exclusivamente a partir de registros existentes y excluye duraciones desconocidas de los promedios. No incorpora las calorías, medidas corporales ni datos de muestra del mockup.
+
+Capturas móviles con datos de prueba: [Inicio](docs/screenshots/mobile-dashboard.png), [ejercicio](docs/screenshots/mobile-exercise.png), [rutina](docs/screenshots/mobile-routine.png) e [historial](docs/screenshots/mobile-history.png).
+
 La fecha inicial es un registro retrospectivo: tres rondas declaradas, **sin resultados individuales ni duración medida**. Los 45 minutos son una referencia. Los complementarios siguen marcados «por confirmar» hasta que se revisen.
 
 ### Desarrollo

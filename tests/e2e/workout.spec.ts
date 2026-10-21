@@ -19,6 +19,31 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   await expect(
     page.getByRole("button", { name: "Comenzar sesión" }),
   ).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Navegación principal" })
+      .getByRole("button"),
+  ).toHaveCount(5);
+  await expect(
+    page.getByRole("heading", { name: "Esta semana", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator(".home-hero img")
+        .evaluate((image: HTMLImageElement) => image.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await page.screenshot({
+    path: "test-results/mobile-dashboard.png",
+    fullPage: false,
+  });
+  await page
+    .getByRole("button", {
+      name: "Ver rutina Vuelta al entrenamiento",
+      exact: true,
+    })
+    .click();
   const firstBlock = page.locator("details.plan-block").first();
   await expect(firstBlock.locator(".superset-card")).toHaveCount(4);
   const firstPair = firstBlock.getByRole("region", {
@@ -49,6 +74,51 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
     page.getByRole("button", { name: "Comenzar sesión" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Comenzar sesión" }).click();
+  await expect(
+    page.getByRole("button", { name: "Ejercicio", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByLabel("Real Air Bike ronda 1", { exact: true }),
+  ).toHaveValue("");
+  await expect(
+    page.getByLabel("Real Burpees ronda 1", { exact: true }),
+  ).toBeHidden();
+  await page
+    .getByRole("button", {
+      name: "Aumentar Real Air Bike ronda 1",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByLabel("Real Air Bike ronda 1", { exact: true }),
+  ).toHaveValue("1");
+  await page
+    .getByRole("button", {
+      name: "Disminuir Real Air Bike ronda 1",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByLabel("Real Air Bike ronda 1", { exact: true }),
+  ).toHaveValue("0");
+  await page.screenshot({
+    path: "test-results/mobile-exercise.png",
+    fullPage: false,
+  });
+  await page.getByRole("button", { name: "Siguiente: Burpees" }).click();
+  await expect(
+    page.getByLabel("Real Burpees ronda 1", { exact: true }),
+  ).toHaveValue("");
+  await expect(
+    page.getByLabel("Real Air Bike ronda 1", { exact: true }),
+  ).toBeHidden();
+  await page.getByRole("button", { name: "Anterior", exact: true }).click();
+  await expect(
+    page.getByLabel("Real Air Bike ronda 1", { exact: true }),
+  ).toHaveValue("0");
+  await page
+    .getByRole("button", { name: "Circuito completo", exact: true })
+    .click();
   const workoutPair = page.getByRole("region", {
     name: "Superset 1 ronda 1",
     exact: true,
@@ -121,6 +191,9 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   await page.waitForTimeout(1200);
   await expect(page.getByTestId("timer")).toHaveText(paused);
   await page.reload();
+  await page
+    .getByRole("button", { name: "Circuito completo", exact: true })
+    .click();
   await expect(
     page.getByLabel("Real Air Bike ronda 1", { exact: true }),
   ).toHaveValue("220");
@@ -180,7 +253,7 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   expect(retry.status()).toBe(200);
   expect((await retry.json()).duplicate).toBe(true);
   await page.reload();
-  await page.getByRole("button", { name: "Histórico", exact: true }).click();
+  await page.getByRole("button", { name: "Historial", exact: true }).click();
   const card = page
     .locator("details.history")
     .filter({ hasText: "Prueba móvil: ronda parcial" })
@@ -193,6 +266,12 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
     fullPage: true,
   });
   await page.getByRole("button", { name: "Rutinas", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "Ver rutina Vuelta al entrenamiento",
+      exact: true,
+    })
+    .click();
   await page.screenshot({
     path: "test-results/mobile-routine.png",
     fullPage: true,
@@ -212,7 +291,24 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
     after.sessions.find((s: { id: string }) => s.id === saved.id).template
       .blocks[0].exercises[0].target,
   ).toBe(425);
-  await page.getByRole("button", { name: "Salir", exact: true }).click();
+  await page.getByRole("button", { name: "Progreso", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Progreso", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Ejercicios", exact: true }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Resultados por ejercicio",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Más", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Ajustes", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Cerrar sesión", exact: true })
+    .click();
   await expect(page).toHaveURL(/login/);
 });
 test("API refuses anonymous and cross-origin writes and does not cache private data", async ({
