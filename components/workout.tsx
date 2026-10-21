@@ -14,6 +14,10 @@ import {
 } from "@/lib/model";
 import { exerciseGroups } from "@/lib/structure";
 import EquipmentTag from "./equipment-tag";
+import CompletionLine from "./completion-line";
+import ExerciseCompletion from "./exercise-completion";
+import SessionProgress from "./session-progress";
+import { completion, nextExercise } from "@/lib/tracking";
 export default function Workout({
   draft,
   history,
@@ -26,7 +30,21 @@ export default function Workout({
   onFinish: () => void;
 }) {
   const [now, setNow] = useState(Date.now());
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(
+    () => nextExercise(draft.session)?.blockIndex ?? 0,
+  );
+  const [focusResult, setFocusResult] = useState<{ id: string } | null>(null);
+  useEffect(() => {
+    if (!focusResult) return;
+    const element = document.getElementById(`exercise-${focusResult.id}`);
+    element?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
+    element?.focus({ preventScroll: true });
+  }, [focusResult, tab]);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
@@ -82,14 +100,33 @@ export default function Workout({
         Guardado en este dispositivo · {stats.recorded} de {stats.total}{" "}
         registros anotados
       </p>
+      <SessionProgress
+        session={session}
+        onNext={(blockIndex, resultId) => {
+          setTab(blockIndex);
+          setFocusResult({ id: resultId });
+        }}
+      />
       <div className="block-tabs" aria-label="Bloques">
         {session.template.blocks.map((block, i) => (
           <button
             aria-pressed={tab === i}
             key={block.id}
-            onClick={() => setTab(i)}
+            onClick={() => {
+              setFocusResult(null);
+              setTab(i);
+            }}
           >
             {block.name}
+            <small>
+              {
+                completion(
+                  session.results.filter((r) => r.blockId === block.id),
+                  block.exercises.length * block.rounds,
+                ).done
+              }
+              /{block.exercises.length * block.rounds}
+            </small>
           </button>
         ))}
       </div>
@@ -101,6 +138,13 @@ export default function Workout({
               Ronda {round + 1} / {b.rounds}
             </span>
           </div>
+          <CompletionLine
+            label={`${b.name} · Ronda ${round + 1}`}
+            results={session.results.filter(
+              (r) => r.blockId === b.id && r.round === round + 1,
+            )}
+            total={b.exercises.length}
+          />
           {exerciseGroups(b.exercises).map((group, groupIndex) => (
             <section
               className="workout-superset"
@@ -116,6 +160,22 @@ export default function Workout({
                     ? `Superset ${groupIndex + 1}`
                     : "Ejercicio individual"}
                 </h3>
+                <span className="superset-completion">
+                  {
+                    completion(
+                      session.results.filter(
+                        (r) =>
+                          r.blockId === b.id &&
+                          r.round === round + 1 &&
+                          group.exercises.some(
+                            (ex) => ex.id === r.prescribedId,
+                          ),
+                      ),
+                      group.exercises.length,
+                    ).done
+                  }
+                  /{group.exercises.length} hechos
+                </span>
               </div>
               {group.exercises.map((ex) => {
                 const r = session.results.find(
@@ -127,7 +187,12 @@ export default function Workout({
                   ex.unit,
                 );
                 return (
-                  <article className={`card result ${r.status}`} key={r.id}>
+                  <article
+                    className={`card result ${r.status}`}
+                    key={r.id}
+                    id={`exercise-${r.id}`}
+                    tabIndex={-1}
+                  >
                     <EquipmentTag kind={ex.equipment} />
                     <div className="section-heading">
                       <h3>{ex.name}</h3>
@@ -200,6 +265,11 @@ export default function Workout({
                         />
                       </label>
                     </div>
+                    <ExerciseCompletion
+                      exercise={ex}
+                      result={r}
+                      onChange={(updated) => result(r.id, updated)}
+                    />
                     <label className="small">
                       Estado
                       <select

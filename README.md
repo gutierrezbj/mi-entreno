@@ -20,6 +20,8 @@ Implementado con Next.js App Router, TypeScript, PostgreSQL 17 y Drizzle. Incluy
 
 Cada bloque organiza la rutina inicial en cuatro supersets: Air Bike + burpees, remo + sentadillas, cinta + lunges y Ski + complementario. Las tarjetas distinguen máquina, peso corporal y trabajo con carga mediante texto e iconos, tanto en el plan como durante el entrenamiento. El constructor permite crear supersets, reagrupar ejercicios, cambiar su tipo y mover una pareja completa. Los complementarios mantienen su estado «por confirmar»; la cinta del último bloque se identifica como máquina y no se convierte en un ejercicio corporal.
 
+Durante el entrenamiento puedes marcar cada ejercicio como hecho. Si aún no has introducido un valor, el botón dice explícitamente «He hecho [objetivo] [unidad]» y ese toque confirma la cantidad; las cargas nunca se rellenan solas. Si has anotado otra cantidad, «Marcar como hecho» conserva ese valor. Desmarcar mantiene la anotación como parcial. Una barra persistente muestra los ejercicios confirmados de la sesión y lleva al siguiente pendiente; también hay avance de ronda, contadores por superset y una línea del valor real frente al objetivo de cada ejercicio. Parciales y omitidos se muestran aparte y no cuentan como completados. Los extras opcionales quedan fuera del denominador del circuito.
+
 La fecha inicial es un registro retrospectivo: tres rondas declaradas, **sin resultados individuales ni duración medida**. Los 45 minutos son una referencia. Los complementarios siguen marcados «por confirmar» hasta que se revisen.
 
 ### Desarrollo

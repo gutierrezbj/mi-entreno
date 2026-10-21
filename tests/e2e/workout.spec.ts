@@ -64,6 +64,58 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   await page
     .getByLabel("Estado Air Bike ronda 1", { exact: true })
     .selectOption("partial");
+  const sessionProgress = page.getByRole("progressbar", {
+    name: "Avance de la sesión",
+    exact: true,
+  });
+  const exerciseProgress = page.getByRole("progressbar", {
+    name: "Objetivo de Air Bike ronda 1",
+    exact: true,
+  });
+  await expect(exerciseProgress).toHaveAttribute("value", "51");
+  await expect(sessionProgress).toHaveAttribute("value", "0");
+  await page
+    .getByRole("button", {
+      name: "Marcar Air Bike ronda 1 como hecho",
+      exact: true,
+    })
+    .click();
+  await expect(sessionProgress).toHaveAttribute("value", "1");
+  await expect(exerciseProgress).toHaveAttribute("value", "51");
+  await expect(
+    page.getByLabel("Real Air Bike ronda 1", { exact: true }),
+  ).toHaveValue("220");
+  await page
+    .getByRole("button", {
+      name: "Confirmar 5 reps realizados en Burpees ronda 1",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByLabel("Real Burpees ronda 1", { exact: true }),
+  ).toHaveValue("5");
+  await expect(sessionProgress).toHaveAttribute("value", "2");
+  await page
+    .getByRole("button", { name: "Desmarcar Burpees ronda 1", exact: true })
+    .click();
+  await expect(sessionProgress).toHaveAttribute("value", "1");
+  await expect(
+    page.getByLabel("Real Burpees ronda 1", { exact: true }),
+  ).toHaveValue("5");
+  await page
+    .getByLabel("Estado Burpees ronda 1", { exact: true })
+    .selectOption("skipped");
+  await expect(
+    page.getByLabel("Real Burpees ronda 1", { exact: true }),
+  ).toHaveValue("");
+  const advance = page.getByRole("region", { name: "Tu avance", exact: true });
+  await expect(advance.getByRole("button")).toContainText("Remo");
+  await advance.getByRole("button").click();
+  await expect(
+    page.locator("article.result").filter({
+      has: page.getByRole("heading", { name: "Remo", exact: true }),
+    }),
+  ).toBeFocused();
   await page.getByRole("button", { name: "Pausar", exact: true }).click();
   const paused = await page.getByTestId("timer").innerText();
   await page.waitForTimeout(1200);
@@ -75,6 +127,20 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   await expect(
     page.getByRole("button", { name: "Reanudar", exact: true }),
   ).toBeVisible();
+  await expect(sessionProgress).toHaveAttribute("value", "1");
+  await expect(
+    page.getByRole("button", {
+      name: "Desmarcar Air Bike ronda 1",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByRole("button", { name: "Desmarcar Air Bike ronda 1", exact: true })
+    .click();
+  await expect(sessionProgress).toHaveAttribute("value", "0");
+  await expect(
+    page.getByLabel("Real Air Bike ronda 1", { exact: true }),
+  ).toHaveValue("220");
   await page.getByRole("button", { name: "Reanudar", exact: true }).click();
   await page
     .getByLabel("Cómo ha ido", { exact: true })
@@ -99,6 +165,9 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   const saved = sessions[0];
   expect(saved.status).toBe("partial");
   expect(saved.results[0].actual).toBe(220);
+  expect(saved.results[0].status).toBe("partial");
+  expect(saved.results[1].status).toBe("skipped");
+  expect(saved.results[1].actual).toBeNull();
   expect(saved.template.blocks[0].exercises[0].target).toBe(425);
   expect(saved.template.blocks[0].exercises[1].equipment).toBe("weighted");
   expect(saved.template.blocks[0].exercises[0].supersetId).toBe(
@@ -114,7 +183,7 @@ test("private mobile flow: edit, train, recover, offline save, idempotent sync a
   await page.getByRole("button", { name: "Histórico", exact: true }).click();
   const card = page
     .locator("details.history")
-    .filter({ hasText: "registro anotado" })
+    .filter({ hasText: "Prueba móvil: ronda parcial" })
     .first();
   await card.locator("summary").click();
   await expect(card.getByText("220 m", { exact: true })).toBeVisible();
