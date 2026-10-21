@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mi_entreno}
+      POSTGRES_USER: ${POSTGRES_USER:-mi_entreno}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    build:
+      context: .
+      target: tools
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-mi_entreno}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mi_entreno}
+      AUTH_USERNAME: ${AUTH_USERNAME:?Set AUTH_USERNAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+  app:
+    build:
+      context: .
+      target: runner
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-mi_entreno}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mi_entreno}
+      AUTH_USERNAME: ${AUTH_USERNAME:?Set AUTH_USERNAME}
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:?Generate AUTH_PASSWORD_HASH}
+      APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  proxy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
